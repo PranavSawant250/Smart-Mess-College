@@ -1,0 +1,63 @@
+# Smart Mess: Technical Architecture & Presentation Guide
+
+## 1. Core Tech Stack Overview
+
+**Frontend (Mobile App)**
+*   **Framework:** Flutter (Dart) - Chosen for its ability to compile natively to both iOS and Android from a single codebase, offering high-performance rendering.
+*   **State Management:** `Provider` - Used for scalable and reactive state handling (e.g., `PollProvider`, `AuthProvider`). It allows different screens to update instantly when data changes without passing variables manually down the UI tree.
+*   **Local Storage:** `flutter_secure_storage` - Used to securely encrypt and store JWT tokens on the device's keychain, preventing unauthorized access.
+
+**Backend (API Server)**
+*   **Runtime/Framework:** Node.js with Express.js - Lightweight, fast, and handles asynchronous requests perfectly (great for handling many students voting at exactly the same time).
+*   **Database:** MongoDB (via Mongoose) - A NoSQL database hosted on Mongo Atlas. Chosen because JSON-like documents map perfectly to our meal options, polls, and user data.
+*   **Authentication:** JSON Web Tokens (JWT) & bcrypt - Passwords are cryptographically hashed using bcrypt. JWTs are used to stateless-ly verify users on every request.
+*   **Deployment:** Railway - Cloud platform used to host the live production Node.js server.
+
+---
+
+## 2. Feature Implementation Breakdown
+
+Here is exactly what we built under the hood for your core features:
+
+### A. Role-Based Access Control & Auth
+*   **How it works:** When a user logs in, the backend generates a JWT containing their `role` (student or admin) and `messId`. 
+*   **Middleware:** The backend uses custom middleware (`auth.middleware.js`) to intercept requests. If a student tries to access an admin route (like finalizing a poll), the middleware automatically rejects it (403 Unauthorized).
+
+### B. Biometric Login (Fingerprint/FaceID)
+*   **How it works:** We used the `local_auth` Flutter package to tap into the phone's native hardware scanner. 
+*   **Security link:** The biometric scanner doesn't actually talk to the backend. Instead, it unlocks the `flutter_secure_storage` on the phone. If the fingerprint matches, the app retrieves the hidden JWT token and automatically logs the user in without needing an internet password check.
+
+### C. Custom Mess ID (`AB1234`)
+*   **How it works:** By default, MongoDB uses long, random ObjectIDs (like `5f8a...`). We overwrote this in `Mess.js` to use a custom String. 
+*   **Validation:** We added Regex Validation (`/^[A-Z]{2}\d{4}$/`) in the Mongoose schema. This ensures admins can only create mathematically structured, 6-character codes, making it incredibly easy for students to type and join.
+
+### D. Meal Polling & Kitchen Finalization
+*   **How it works:** When admins create a poll, it lives in the `Poll` collection. When students vote, it increments counters in the database.
+*   **Finalization:** When the admin clicks "Finalize", the backend flips `isFinalized: true`. Crucially, it takes a *snapshot* of the data and creates a brand new document in the `KitchenOrder` collection. This ensures that even if students somehow try to change their votes later, the Kitchen's data is permanently frozen.
+
+### E. Attendance Analytics
+*   **How it works:** Rather than creating a separate attendance register, the system derives attendance intelligently from the polls. If a student votes for a meal (Veg/Non-Veg/Fast), they are counted as "Present". If they vote "NO" (`totalNotComing`), they are "Absent". The backend calculates these aggregates and sends the percentages to the Flutter UI.
+
+---
+
+## 3. Presentation Q&A (Counter Questions)
+
+Here are the most common questions professors or judges will ask, and how you should answer them:
+
+**Q1: Why did you choose MongoDB instead of a relational database like MySQL?**
+> **Answer:** "Because our data structures are highly dynamic. A meal poll contains arrays of different Veg, Non-Veg, and Fast options that change daily. A NoSQL database like MongoDB handles nested arrays and documents perfectly, whereas MySQL would require complex, rigid table joins that would slow down the app."
+
+**Q2: How is the biometric fingerprint login secure if it doesn't verify with the server?**
+> **Answer:** "The biometric scan acts as a local gatekeeper. When the user first logs in with their password, the server issues a secure JWT token. We encrypt and hide this token in the phone's native Secure Keystore. The fingerprint simply unlocks the Keystore to retrieve the token. So, the server is still verifying a cryptographically signed token on every single request."
+
+**Q3: What happens if two students vote at the exact same millisecond? Will the database count both?**
+> **Answer:** "Yes. In our backend, we use MongoDB's `$inc` (increment) operator. Instead of reading the vote count, adding 1, and saving it back (which causes race conditions), `$inc` tells the database engine to atomicaly add 1 at the hardware level. This guarantees no votes are ever lost or overwritten."
+
+**Q4: Why did you write a Custom Mess ID system instead of just letting students search by Mess Name?**
+> **Answer:** "For scalability and security. Mess names can be duplicated or easily guessed (e.g., 'Boys Hostel Mess'). By enforcing a strict `AB1234` format, we prevent students from accidentally joining the wrong mess, and it acts as a private invite code that the Admin controls."
+
+**Q5: What happens if a student forgets to vote before the deadline?**
+> **Answer:** "Once the Admin clicks 'Finalize Poll', the backend marks `isFinalized = true` and generates the `KitchenOrder`. If a student tries to vote after this, our backend API explicitly checks this flag and will return a 400 Error, blocking the vote. Their attendance for that meal will simply be left unrecorded or marked as missed."
+
+**Q6: If the app is offline, does it crash?**
+> **Answer:** "No, we added proper error handling. Because we added explicit `INTERNET` permissions in the Android Manifest, the app knows how to handle network failures. The `ApiService` wrapper catches timeout exceptions and displays a user-friendly Snackbar rather than crashing the application."
