@@ -3,8 +3,9 @@ import 'package:intl/intl.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
-import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class KitchenOrderScreen extends StatefulWidget {
   const KitchenOrderScreen({super.key});
@@ -25,13 +26,28 @@ class _KitchenOrderScreenState extends State<KitchenOrderScreen> {
 
   Future<void> _fetchOrders() async {
     try {
-      final response = await ApiService.get(ApiConfig.kitchenOrders);
-      if (response['success'] == true) {
-        final list = response['orders'] as List;
-        if (mounted) {
-          setState(() {
-            _orders = list.map((e) => KitchenOrder.fromJson(e)).toList();
-          });
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final messId = userDoc.data()?['messId'];
+
+        if (messId != null && messId.toString().isNotEmpty) {
+          final snapshot = await FirebaseFirestore.instance.collection('kitchen_orders')
+              .where('messId', isEqualTo: messId)
+              .orderBy('sentAt', descending: true)
+              .get();
+
+          if (mounted) {
+            setState(() {
+              _orders = snapshot.docs.map((doc) {
+                final data = doc.data();
+                data['id'] = doc.id;
+                if (data['date'] is Timestamp) data['date'] = (data['date'] as Timestamp).toDate().toIso8601String();
+                if (data['sentAt'] is Timestamp) data['sentAt'] = (data['sentAt'] as Timestamp).toDate().toIso8601String();
+                return KitchenOrder.fromJson(data);
+              }).toList();
+            });
+          }
         }
       }
     } catch (e) {

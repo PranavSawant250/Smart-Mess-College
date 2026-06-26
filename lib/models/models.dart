@@ -7,7 +7,12 @@ class User {
   final String password;
   final String role; // 'student' or 'admin'
   final String rollNumber;
+  final String prn;
+  final String branch;
+  final String passoutYear;
+  final String hostelName;
   final String messId;
+  final int? messStudentId;
   final bool biometricEnabled;
 
   User({
@@ -18,7 +23,12 @@ class User {
     required this.password,
     required this.role,
     this.rollNumber = '',
+    this.prn = '',
+    this.branch = '',
+    this.passoutYear = '',
+    this.hostelName = '',
     this.messId = '',
+    this.messStudentId,
     this.biometricEnabled = false,
   });
 
@@ -32,7 +42,12 @@ class User {
         'password': password,
         'role': role,
         'rollNumber': rollNumber,
+        'prn': prn,
+        'branch': branch,
+        'passoutYear': passoutYear,
+        'hostelName': hostelName,
         'messId': messId,
+        'messStudentId': messStudentId,
         'biometricEnabled': biometricEnabled,
       };
 
@@ -44,7 +59,12 @@ class User {
         password: json['password'] ?? '',
         role: json['role'] ?? 'student',
         rollNumber: json['rollNumber'] ?? '',
+        prn: json['prn'] ?? '',
+        branch: json['branch'] ?? '',
+        passoutYear: json['passoutYear'] ?? '',
+        hostelName: json['hostelName'] ?? '',
         messId: json['messId']?.toString() ?? '',
+        messStudentId: json['messStudentId'],
         biometricEnabled: json['biometricEnabled'] ?? false,
       );
 }
@@ -56,6 +76,8 @@ class Mess {
   final String address;
   final int monthlyFee;
   final String description;
+  final String upiId;
+  final String qrCodeImage;
 
   Mess({
     required this.id,
@@ -64,15 +86,19 @@ class Mess {
     this.address = '',
     this.monthlyFee = 0,
     this.description = '',
+    this.upiId = '',
+    this.qrCodeImage = '',
   });
 
   factory Mess.fromJson(Map<String, dynamic> json) => Mess(
         id: json['_id'] ?? json['id'] ?? '',
         messName: json['messName'] ?? '',
-        adminId: json['adminId'] ?? '',
+        adminId: json['adminId'] is Map ? (json['adminId']['_id'] ?? json['adminId']['id'] ?? '') : (json['adminId'] ?? ''),
         address: json['address'] ?? '',
-        monthlyFee: json['monthlyFee'] ?? 0,
+        monthlyFee: (json['monthlyFee'] ?? 0) is num ? (json['monthlyFee'] as num).toInt() : int.tryParse(json['monthlyFee'].toString()) ?? 0,
         description: json['description'] ?? '',
+        upiId: json['upiId'] ?? '',
+        qrCodeImage: json['qrCodeImage'] ?? '',
       );
 
   Map<String, dynamic> toJson() => {
@@ -82,6 +108,8 @@ class Mess {
         'address': address,
         'monthlyFee': monthlyFee,
         'description': description,
+        'upiId': upiId,
+        'qrCodeImage': qrCodeImage,
       };
 }
 
@@ -108,7 +136,7 @@ class JoinRequest {
 
   factory JoinRequest.fromJson(Map<String, dynamic> json) => JoinRequest(
         id: json['_id'] ?? json['id'] ?? '',
-        userId: json['studentId']?['_id'] ?? json['studentId'] ?? '',
+        userId: json['studentId'] is Map ? (json['studentId']['_id'] ?? json['studentId']['id'] ?? '') : (json['studentId'] ?? ''),
         userName: json['studentName'] ?? '',
         userEmail: json['studentEmail'] ?? '',
         userPhone: json['studentPhone'] ?? '',
@@ -135,6 +163,8 @@ class MealPoll {
   int totalNonVeg;
   int totalFast;
   int totalNotComing;
+  final DateTime? pollStartTime;
+  final DateTime? pollEndTime;
 
   MealPoll({
     required this.id,
@@ -153,6 +183,8 @@ class MealPoll {
     this.totalNonVeg = 0,
     this.totalFast = 0,
     this.totalNotComing = 0,
+    this.pollStartTime,
+    this.pollEndTime,
   });
 
   factory MealPoll.fromJson(Map<String, dynamic> json) => MealPoll(
@@ -172,6 +204,8 @@ class MealPoll {
         totalNonVeg: json['totalNonVeg'] ?? 0,
         totalFast: json['totalFast'] ?? 0,
         totalNotComing: json['totalNotComing'] ?? 0,
+        pollStartTime: json['pollStartTime'] != null ? DateTime.parse(json['pollStartTime']) : null,
+        pollEndTime: json['pollEndTime'] != null ? DateTime.parse(json['pollEndTime']) : null,
       );
 }
 
@@ -201,6 +235,7 @@ class Vote {
   final String pollId;
   final String mealType;
   final String optionId;
+  final List<String> optionIds;
   final bool isComing;
   final DateTime votedAt;
 
@@ -209,15 +244,17 @@ class Vote {
     required this.pollId,
     required this.mealType,
     required this.optionId,
+    required this.optionIds,
     required this.isComing,
     required this.votedAt,
   });
 
   factory Vote.fromJson(Map<String, dynamic> json) => Vote(
-        userId: json['userId']?['_id'] ?? json['userId'] ?? '',
+        userId: json['userId'] is Map ? (json['userId']['_id'] ?? json['userId']['id'] ?? '') : (json['userId'] ?? ''),
         pollId: json['pollId'] ?? '',
         mealType: json['mealType'] ?? '',
         optionId: json['optionId'] ?? '',
+        optionIds: (json['optionIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
         isComing: json['isComing'] ?? true,
         votedAt: json['votedAt'] != null ? DateTime.parse(json['votedAt']) : DateTime.now(),
       );
@@ -250,9 +287,9 @@ class MealFeedback {
 
   factory MealFeedback.fromJson(Map<String, dynamic> json) => MealFeedback(
         id: json['_id'] ?? json['id'] ?? '',
-        userId: json['userId']?['_id'] ?? json['userId'] ?? '',
+        userId: json['userId'] is Map ? (json['userId']['_id'] ?? json['userId']['id'] ?? '') : (json['userId'] ?? ''),
         userName: json['userName'] ?? '',
-        pollId: json['pollId']?['_id'] ?? json['pollId'] ?? '',
+        pollId: json['pollId'] is Map ? (json['pollId']['_id'] ?? json['pollId']['id'] ?? '') : (json['pollId'] ?? ''),
         foodQuality: json['foodQuality'] ?? 0,
         taste: json['taste'] ?? 0,
         service: json['service'] ?? 0,
@@ -290,7 +327,7 @@ class KitchenOrder {
 
   factory KitchenOrder.fromJson(Map<String, dynamic> json) => KitchenOrder(
         id: json['_id'] ?? json['id'] ?? '',
-        pollId: json['pollId']?['_id'] ?? json['pollId'] ?? '',
+        pollId: json['pollId'] is Map ? (json['pollId']['_id'] ?? json['pollId']['id'] ?? '') : (json['pollId'] ?? ''),
         mealTime: json['mealTime'] ?? '',
         date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
         vegCount: json['vegCount'] ?? 0,
@@ -427,4 +464,58 @@ class Attendance {
         billAmount: (json['billAmount'] ?? 0).toDouble(),
         records: (json['records'] as List?)?.map((x) => AttendanceRecord.fromJson(x)).toList() ?? [],
       );
+}
+
+class Transaction {
+  final String id;
+  final String studentId;
+  final String messId;
+  final double amount;
+  final String paymentMode;
+  final String paymentStatus;
+  final DateTime paymentDate;
+  final String paymentScreenshot;
+  final String proofImage;
+  final String transactionId;
+
+  Transaction({
+    required this.id,
+    required this.studentId,
+    required this.messId,
+    required this.amount,
+    required this.paymentMode,
+    required this.paymentStatus,
+    required this.paymentDate,
+    required this.paymentScreenshot,
+    required this.proofImage,
+    required this.transactionId,
+  });
+
+  factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
+        id: json['_id'] ?? json['id'] ?? '',
+        studentId: json['studentId'] is Map
+            ? (json['studentId']['_id'] ?? json['studentId']['id'] ?? '')
+            : (json['studentId'] ?? ''),
+        messId: json['messId'] ?? '',
+        amount: (json['amount'] ?? 0).toDouble(),
+        paymentMode: json['paymentMode'] ?? '',
+        paymentStatus: json['paymentStatus'] ?? '',
+        paymentDate: json['paymentDate'] != null ? DateTime.parse(json['paymentDate']) : DateTime.now(),
+        paymentScreenshot: json['paymentScreenshot'] ?? '',
+        proofImage: json['proofImage'] ?? '',
+        transactionId: json['transactionId'] ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        '_id': id,
+        'studentId': studentId,
+        'messId': messId,
+        'amount': amount,
+        'paymentMode': paymentMode,
+        'paymentStatus': paymentStatus,
+        'paymentDate': paymentDate.toIso8601String(),
+        'paymentScreenshot': paymentScreenshot,
+        'proofImage': proofImage,
+        'transactionId': transactionId,
+      };
 }

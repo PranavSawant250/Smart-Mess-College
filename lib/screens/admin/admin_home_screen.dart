@@ -5,8 +5,6 @@ import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
 import '../../providers/poll_provider.dart';
 import '../../providers/mess_provider.dart';
-import '../../services/api_service.dart';
-import '../../config/api_config.dart';
 import 'create_poll_screen.dart';
 import 'poll_analysis_screen.dart';
 import 'kitchen_order_screen.dart';
@@ -15,6 +13,9 @@ import 'admin_requests_screen.dart';
 import 'admin_profile_screen.dart';
 import '../notifications_screen.dart';
 import '../../providers/notification_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -60,35 +61,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       appBar: AppBar(
         title: const Text('ADMIN PANEL'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Consumer<NotificationProvider>(
-              builder: (context, provider, child) {
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.notifications_none, color: Colors.white),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))
-                            .then((_) => _fetchNotifs());
-                      },
-                    ),
-                    if (provider.unreadCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                          child: Text('${provider.unreadCount}', style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
+          // Removed Notifications icon
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
@@ -141,14 +114,23 @@ class _AdminDashboardState extends State<_AdminDashboard> {
 
   Future<void> _fetchStats() async {
     try {
-      final feedbackRes = await ApiService.get(ApiConfig.feedbackSummary);
-      if (feedbackRes['success'] == true) {
-        _avgRating = (feedbackRes['summary']['avgOverall'] ?? 0).toDouble();
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final messId = userDoc.data()?['messId'];
+        
+        if (messId != null && messId.toString().isNotEmpty) {
+          final feedbackRes = await FirebaseFirestore.instance.collection('feedbacks').get(); // Assuming we get all for now, to be optimized
+          if (feedbackRes.docs.isNotEmpty) {
+            double total = 0;
+            for (var doc in feedbackRes.docs) {
+              final d = doc.data();
+              total += ((d['foodQuality'] ?? 0) + (d['taste'] ?? 0) + (d['service'] ?? 0)) / 3;
+            }
+            _avgRating = total / feedbackRes.docs.length;
+          }
+        }
       }
-      
-      // Votes might not have a direct count API yet, mock it or get from polls
-      // For now, let's calculate from active polls if possible
-      
     } catch (e) {
       print('Fetch stats error: $e');
     }

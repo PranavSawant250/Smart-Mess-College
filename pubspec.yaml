@@ -21,6 +21,10 @@ dependencies:
   provider: ^6.1.1
 #  flutter_local_notifications: 15.1.1
   badges: ^3.1.2
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.4
+  cloud_firestore: ^6.6.0
+  firebase_storage: ^13.4.3
 
 dev_dependencies:
   flutter_test:

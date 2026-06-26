@@ -10,8 +10,11 @@ import '../../config/api_config.dart';
 import 'vote_screen.dart';
 import 'meal_history_screen.dart';
 import 'student_profile_screen.dart';
+import 'student_transaction_history_screen.dart';
 import '../notifications_screen.dart';
 import '../../providers/notification_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -52,6 +55,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         await Provider.of<PollProvider>(context, listen: false).fetchActivePolls();
       }),
       const MealHistoryScreen(),
+      const StudentTransactionHistoryScreen(),
     ];
 
     return Scaffold(
@@ -122,6 +126,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history, color: AppColors.primary),
             label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet, color: AppColors.primary),
+            label: 'Payments',
           ),
         ],
       ),
@@ -214,9 +223,12 @@ class _PollCardState extends State<_PollCard> {
 
   Future<void> _checkVoteStatus() async {
     try {
-      final response = await ApiService.get('${ApiConfig.myVote}?pollId=${widget.poll.id}');
-      if (response['success'] == true && response['vote'] != null) {
-        if (mounted) setState(() { _hasVoted = true; });
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('votes').doc('${widget.poll.id}_${user.uid}').get();
+        if (doc.exists) {
+          if (mounted) setState(() { _hasVoted = true; });
+        }
       }
     } catch (e) {
       print('Check vote status error: $e');

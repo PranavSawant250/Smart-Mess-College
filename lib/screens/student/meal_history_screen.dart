@@ -8,6 +8,8 @@ import '../../providers/poll_provider.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import 'feedback_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class MealHistoryScreen extends StatefulWidget {
   const MealHistoryScreen({super.key});
@@ -79,11 +81,12 @@ class _HistoryCardState extends State<_HistoryCard> {
 
   Future<void> _checkFeedbackStatus() async {
     try {
-      final response = await ApiService.get(ApiConfig.feedbackStatus(widget.poll.id));
-      if (response['success'] == true) {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('feedbacks').doc('${widget.poll.id}_${user.uid}').get();
         if (mounted) {
           setState(() {
-            _canGiveFeedback = !response['hasSubmitted'] && response['windowOpen'];
+            _canGiveFeedback = !doc.exists;
           });
         }
       }

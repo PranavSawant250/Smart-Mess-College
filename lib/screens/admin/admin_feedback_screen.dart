@@ -3,8 +3,9 @@ import 'package:intl/intl.dart';
 import '../../theme.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
-import '../../services/api_service.dart';
 import '../../config/api_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class AdminFeedbackScreen extends StatefulWidget {
   const AdminFeedbackScreen({super.key});
@@ -30,19 +31,58 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
 
   Future<void> _fetchFeedbacks() async {
     try {
-      final summaryRes = await ApiService.get(ApiConfig.feedbackSummary);
-      if (summaryRes['success'] == true) {
-        final data = summaryRes['summary'];
-        _avgFoodQuality = (data['avgFoodQuality'] ?? 0).toDouble();
-        _avgTaste = (data['avgTaste'] ?? 0).toDouble();
-        _avgService = (data['avgService'] ?? 0).toDouble();
-        _avgOverall = (data['avgOverall'] ?? 0).toDouble();
-      }
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final messId = userDoc.data()?['messId'];
 
-      final fbRes = await ApiService.get(ApiConfig.feedbackMess);
-      if (fbRes['success'] == true) {
-        final list = fbRes['feedbacks'] as List;
-        _feedbacks = list.map((e) => MealFeedback.fromJson(e)).toList();
+        if (messId != null && messId.toString().isNotEmpty) {
+          final pollsSnapshot = await FirebaseFirestore.instance.collection('polls').where('messId', isEqualTo: messId).get();
+          final pollIds = pollsSnapshot.docs.map((e) => e.id).toList();
+
+          if (pollIds.isNotEmpty) {
+            final feedbackRes = await FirebaseFirestore.instance.collection('feedbacks').get();
+            
+            final filteredDocs = feedbackRes.docs.where((doc) {
+              final pid = doc.data()['pollId'] as String?;
+              return pid != null && pollIds.contains(pid);
+            }).toList();
+
+            double totalFood = 0;
+            double totalTaste = 0;
+            double totalService = 0;
+            List<MealFeedback> list = [];
+
+            for (var doc in filteredDocs) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              
+              if (data['submittedAt'] is Timestamp) {
+                data['submittedAt'] = (data['submittedAt'] as Timestamp).toDate().toIso8601String();
+              }
+
+              final sUser = await FirebaseFirestore.instance.collection('users').doc(data['userId']).get();
+              data['userName'] = sUser.data()?['name'] ?? 'Unknown';
+
+              final fb = MealFeedback.fromJson(data);
+              list.add(fb);
+
+              totalFood += fb.foodQuality;
+              totalTaste += fb.taste;
+              totalService += fb.service;
+            }
+
+            if (list.isNotEmpty) {
+              _avgFoodQuality = totalFood / list.length;
+              _avgTaste = totalTaste / list.length;
+              _avgService = totalService / list.length;
+              _avgOverall = (_avgFoodQuality + _avgTaste + _avgService) / 3;
+            }
+
+            list.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+            _feedbacks = list;
+          }
+        }
       }
     } catch (e) {
       print('Fetch feedback error: $e');

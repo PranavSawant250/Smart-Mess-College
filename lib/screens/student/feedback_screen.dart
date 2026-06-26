@@ -4,6 +4,8 @@ import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class FeedbackScreen extends StatefulWidget {
   final MealPoll poll;
@@ -38,23 +40,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     setState(() => _isLoading = true);
     
     try {
-      final response = await ApiService.post(ApiConfig.feedback, {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("User not logged in");
+
+      await FirebaseFirestore.instance.collection('feedbacks').doc('${widget.poll.id}_${user.uid}').set({
         'pollId': widget.poll.id,
+        'userId': user.uid,
         'foodQuality': _foodQuality,
         'taste': _taste,
         'service': _service,
         'comment': _commentCtrl.text.trim(),
+        'submittedAt': FieldValue.serverTimestamp(),
       });
       
-      if (response['success'] == true) {
-        if (mounted) setState(() { _submitted = true; _isLoading = false; });
-        _showSuccess();
-      } else {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to submit feedback.')));
-        }
-      }
+      if (mounted) setState(() { _submitted = true; _isLoading = false; });
+      _showSuccess();
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

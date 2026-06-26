@@ -26,6 +26,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _messNameCtrl = TextEditingController();
   final _messIdCtrl = TextEditingController();
   
+  final _prnCtrl = TextEditingController();
+  final _hostelCtrl = TextEditingController();
+  String? _selectedBranch;
+  String? _selectedPassoutYear;
+  
   bool _obscurePass = true;
   bool _isLoading = false;
   String? _error;
@@ -63,6 +68,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       _phoneCtrl.clear();
       _messNameCtrl.clear();
       _messIdCtrl.clear();
+      _prnCtrl.clear();
+      _hostelCtrl.clear();
+      _selectedBranch = null;
+      _selectedPassoutYear = null;
     }
   }
 
@@ -75,6 +84,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _phoneCtrl.dispose();
     _messNameCtrl.dispose();
     _messIdCtrl.dispose();
+    _prnCtrl.dispose();
+    _hostelCtrl.dispose();
     super.dispose();
   }
 
@@ -169,7 +180,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           _emailCtrl.text.trim(), 
           _phoneCtrl.text.trim(), 
           _passCtrl.text.trim(), 
-          '' // roll number
+          '', // pass empty string for roll number to backend to maintain API contract
+          _prnCtrl.text.trim(),
+          _selectedBranch ?? '',
+          _selectedPassoutYear ?? '',
+          _hostelCtrl.text.trim(),
         );
       }
     }
@@ -180,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (success && authProvider.currentUser != null) {
       _navigateBasedOnRole(authProvider.currentUser);
     } else {
-      setState(() => _error = _isLogin ? 'Invalid credentials. Please try again.' : 'Signup failed.');
+      setState(() => _error = authProvider.lastError ?? (_isLogin ? 'Invalid credentials. Please try again.' : 'Signup failed.'));
     }
   }
 
@@ -303,6 +318,51 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     controller: _messIdCtrl,
                                     decoration: const InputDecoration(labelText: 'Mess ID (e.g. AB1234)', prefixIcon: Icon(Icons.pin_outlined, color: AppColors.primary)),
                                     validator: (v) => v == null || !RegExp(r'^[A-Z]{2}\d{4}$').hasMatch(v) ? 'Enter valid ID (2 caps, 4 digits)' : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                                if (_selectedRole == 0) ...[
+                                  TextFormField(
+                                    controller: _prnCtrl,
+                                    decoration: const InputDecoration(labelText: 'PRN', prefixIcon: Icon(Icons.numbers_outlined, color: AppColors.primary)),
+                                    validator: (v) => v == null || v.isEmpty ? 'Enter PRN' : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    value: _selectedBranch,
+                                    decoration: const InputDecoration(labelText: 'Branch', prefixIcon: Icon(Icons.book_outlined, color: AppColors.primary)),
+                                    items: const [
+                                      DropdownMenuItem(value: 'CSE', child: Text('Computer Science (CSE)')),
+                                      DropdownMenuItem(value: 'IT', child: Text('Information Technology (IT)')),
+                                      DropdownMenuItem(value: 'ENTC', child: Text('Electronics & Telecommunication (ENTC)')),
+                                      DropdownMenuItem(value: 'MECH', child: Text('Mechanical (MECH)')),
+                                      DropdownMenuItem(value: 'CIVIL', child: Text('Civil (CIVIL)')),
+                                      DropdownMenuItem(value: 'ELEC', child: Text('Electrical (ELEC)')),
+                                    ],
+                                    onChanged: (val) => setState(() => _selectedBranch = val),
+                                    validator: (v) => v == null ? 'Select branch' : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  DropdownButtonFormField<String>(
+                                    isExpanded: true,
+                                    value: _selectedPassoutYear,
+                                    decoration: const InputDecoration(labelText: 'Passout Year', prefixIcon: Icon(Icons.calendar_today_outlined, color: AppColors.primary)),
+                                    items: const [
+                                      DropdownMenuItem(value: '2026', child: Text('2026')),
+                                      DropdownMenuItem(value: '2027', child: Text('2027')),
+                                      DropdownMenuItem(value: '2028', child: Text('2028')),
+                                      DropdownMenuItem(value: '2029', child: Text('2029')),
+                                      DropdownMenuItem(value: '2030', child: Text('2030')),
+                                    ],
+                                    onChanged: (val) => setState(() => _selectedPassoutYear = val),
+                                    validator: (v) => v == null ? 'Select passout year' : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _hostelCtrl,
+                                    decoration: const InputDecoration(labelText: 'Hostel Name', prefixIcon: Icon(Icons.home_outlined, color: AppColors.primary)),
+                                    validator: (v) => v == null || v.isEmpty ? 'Enter hostel name' : null,
                                   ),
                                   const SizedBox(height: 16),
                                 ],

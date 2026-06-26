@@ -2,7 +2,7 @@ class ApiConfig {
   // Set to cloud URL by default, or pass via --dart-define=API_BASE_URL=http://localhost:5000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://smart-mess-backend-iv7g.onrender.com' // Replace with your Render URL (e.g. 'https://smart-mess-backend.onrender.com') when deployed
+    defaultValue: 'http://10.99.124.227:5000' // Changed to point to the local backend
   );
 
   // Auth
@@ -22,6 +22,7 @@ class ApiConfig {
   static const String messRequests     = '$baseUrl/api/mess/requests';
   static const String messStudents     = '$baseUrl/api/mess/students';
   static const String myMess           = '$baseUrl/api/mess/my-mess';
+  static const String updateMess       = '$baseUrl/api/mess/update';
   static String approveRequest(String id) => '$baseUrl/api/mess/requests/$id/approve';
   static String rejectRequest(String id)  => '$baseUrl/api/mess/requests/$id/reject';
   static String removeStudent(String id)  => '$baseUrl/api/mess/students/$id';
@@ -65,4 +66,13 @@ class ApiConfig {
   static const String studentsAttendance= '$baseUrl/api/attendance/students';
   static const String attendanceAnalytics = '$baseUrl/api/attendance/analytics';
   static String studentAttendance(String id) => '$baseUrl/api/attendance/student/$id';
+
+  // Transactions
+  static const String submitTransaction = '$baseUrl/api/transactions';
+  static const String myTransactions = '$baseUrl/api/transactions/my';
+  static const String messTransactions = '$baseUrl/api/transactions/mess';
+  static String updateTransactionStatus(String id) => '$baseUrl/api/transactions/$id/status';
+  static String messById(String id) => '$baseUrl/api/mess/$id';
+  static String studentProfileForAdmin(String id) => '$baseUrl/api/mess/students/$id/profile';
+  static String requestProfileForAdmin(String id) => '$baseUrl/api/mess/requests/$id/profile';
 }

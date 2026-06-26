@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../config/api_config.dart';
@@ -8,19 +10,35 @@ class NotificationProvider with ChangeNotifier {
   int _unreadCount = 0;
   bool _isLoading = false;
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+
   List<AppNotification> get notifications => _notifications;
   int get unreadCount => _unreadCount;
   bool get isLoading => _isLoading;
 
   Future<void> fetchNotifications() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await ApiService.get(ApiConfig.notifications);
-      if (response['success'] == true) {
-        _notifications = (response['notifications'] as List).map((n) => AppNotification.fromJson(n)).toList();
-        _unreadCount = response['unreadCount'] ?? 0;
-      }
+      final snapshot = await _firestore.collection('notifications')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      _notifications = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        if (data['createdAt'] is Timestamp) {
+          data['createdAt'] = (data['createdAt'] as Timestamp).toDate().toIso8601String();
+        }
+        return AppNotification.fromJson(data);
+      }).toList();
+
+      _unreadCount = _notifications.where((n) => !n.isRead).length;
     } catch (e) {
       print('Fetch notifications error: $e');
     }
@@ -30,7 +48,7 @@ class NotificationProvider with ChangeNotifier {
 
   Future<void> markAsRead(String id) async {
     try {
-      await ApiService.put(ApiConfig.readNotif(id));
+      await _firestore.collection('notifications').doc(id).update({'isRead': true});
       final idx = _notifications.indexWhere((n) => n.id == id);
       if (idx != -1 && !_notifications[idx].isRead) {
         _notifications[idx] = AppNotification(
@@ -52,8 +70,21 @@ class NotificationProvider with ChangeNotifier {
   }
 
   Future<void> markAllAsRead() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
     try {
-      await ApiService.put(ApiConfig.readAllNotifs);
+      final batch = _firestore.batch();
+      final snapshot = await _firestore.collection('notifications')
+          .where('userId', isEqualTo: user.uid)
+          .where('isRead', isEqualTo: false)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+
       for (int i = 0; i < _notifications.length; i++) {
         if (!_notifications[i].isRead) {
           _notifications[i] = AppNotification(

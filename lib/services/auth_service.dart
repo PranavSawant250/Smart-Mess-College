@@ -13,13 +13,45 @@ class AuthService {
     });
   }
 
-  static Future<Map<String, dynamic>> signupStudent(String name, String email, String phone, String password, String rollNumber) async {
+  static Future<Map<String, dynamic>> signupStudent(
+    String name,
+    String email,
+    String phone,
+    String password,
+    String rollNumber,
+    String prn,
+    String branch,
+    String passoutYear,
+    String hostelName,
+  ) async {
     return await ApiService.post(ApiConfig.signupStudent, {
       'name': name,
       'email': email,
       'phone': phone,
       'password': password,
       'rollNumber': rollNumber,
+      'prn': prn,
+      'branch': branch,
+      'passoutYear': passoutYear,
+      'hostelName': hostelName,
+    });
+  }
+
+  static Future<Map<String, dynamic>> updateProfile(
+    String name,
+    String phone,
+    String rollNumber,
+    String branch,
+    String passoutYear,
+    String hostelName,
+  ) async {
+    return await ApiService.put(ApiConfig.updateProfile, {
+      'name': name,
+      'phone': phone,
+      'rollNumber': rollNumber,
+      'branch': branch,
+      'passoutYear': passoutYear,
+      'hostelName': hostelName,
     });
   }
 

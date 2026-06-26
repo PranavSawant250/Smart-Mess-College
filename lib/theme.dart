@@ -13,6 +13,8 @@ class AppColors {
   static const Color warning = Color(0xFFF57F17);
   static const Color error = Color(0xFFC62828);
   static const Color divider = Color(0xFFE0D6CC);
+
+  static Color? get secondary => null;
 }
 
 class AppTheme {

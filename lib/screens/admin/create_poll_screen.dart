@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../theme.dart';
 import '../../providers/poll_provider.dart';
 import '../../models/models.dart';
@@ -22,10 +23,16 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
   final List<TextEditingController> _nonVegCtrls = [TextEditingController(text: 'Chicken Curry + Rice')];
   final List<TextEditingController> _fastCtrls = [TextEditingController(text: 'Sabudana Khichdi')];
 
+  DateTime? _pollStartTime;
+  DateTime? _pollEndTime;
+
   @override
   void initState() {
     super.initState();
     _titleCtrl.text = "Today's ${_mealTime} Poll";
+    final now = DateTime.now();
+    _pollStartTime = now;
+    _pollEndTime = now.add(const Duration(hours: 4));
   }
 
   @override
@@ -66,6 +73,8 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
       vegOptions: makeOptions(_vegCtrls, 'nv_'),
       nonVegOptions: makeOptions(_nonVegCtrls, 'nnv_'),
       fastOptions: makeOptions(_fastCtrls, 'nf_'),
+      pollStartTime: _pollStartTime,
+      pollEndTime: _pollEndTime,
     );
 
     if (mounted) {
@@ -116,6 +125,69 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                 _mealTime = v!;
                 _titleCtrl.text = "Today's $_mealTime Poll";
               }),
+            ),
+            const SizedBox(height: 20),
+
+            const SectionHeader(title: 'Voting Duration'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _pollStartTime ?? DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(_pollStartTime ?? DateTime.now()),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            _pollStartTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                          });
+                        }
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(labelText: 'Start Time', prefixIcon: Icon(Icons.play_circle_outline, color: AppColors.primary)),
+                      child: Text(_pollStartTime != null ? DateFormat('MMM dd, hh:mm a').format(_pollStartTime!) : 'Select'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _pollEndTime ?? DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(_pollEndTime ?? DateTime.now()),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            _pollEndTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                          });
+                        }
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(labelText: 'End Time', prefixIcon: Icon(Icons.stop_circle_outlined, color: AppColors.primary)),
+                      child: Text(_pollEndTime != null ? DateFormat('MMM dd, hh:mm a').format(_pollEndTime!) : 'Select'),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 

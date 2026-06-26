@@ -15,7 +15,7 @@ class VoteScreen extends StatefulWidget {
 
 class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateMixin {
   String _selectedMealType = '';
-  String _selectedOptionId = '';
+  List<String> _selectedOptionIds = [];
   late TabController _tabCtrl;
   bool _submitted = false;
   bool _isEating = true;
@@ -34,7 +34,7 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
       setState(() {
         if (_isEating) {
           _selectedMealType = _tabs[_tabCtrl.index]['key'];
-          _selectedOptionId = '';
+          _selectedOptionIds = [];
         }
       });
     });
@@ -56,9 +56,9 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _submitVote() async {
-    if (_isEating && _selectedOptionId.isEmpty) {
+    if (_isEating && _selectedOptionIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a food option before voting.')),
+        const SnackBar(content: Text('Please select at least one food option before voting.')),
       );
       return;
     }
@@ -68,9 +68,9 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
     
     if (_isEating) {
       final mealType = _tabs[_tabCtrl.index]['key'] as String;
-      success = await pollProvider.castVote(widget.poll.id, mealType, _selectedOptionId, true);
+      success = await pollProvider.castVote(widget.poll.id, mealType, _selectedOptionIds, true);
     } else {
-      success = await pollProvider.castVote(widget.poll.id, 'skip', 'none', false);
+      success = await pollProvider.castVote(widget.poll.id, 'skip', [], false);
     }
     
     if (success && mounted) {
@@ -163,7 +163,7 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
                     setState(() {
                       _isEating = newSelection.first;
                       if (!_isEating) {
-                        _selectedOptionId = '';
+                        _selectedOptionIds = [];
                         _selectedMealType = '';
                       } else {
                         _selectedMealType = _tabs[_tabCtrl.index]['key'];
@@ -210,16 +210,20 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text('Choose your food preference:',
+                    Text('Choose your food preferences (Multi-select):',
                         style: TextStyle(fontSize: 14, color: AppColors.textLight, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 12),
                     ...options.map((opt) => _OptionCard(
                           option: opt,
-                          isSelected: _selectedOptionId == opt.id && _selectedMealType == tabKey,
+                          isSelected: _selectedOptionIds.contains(opt.id) && _selectedMealType == tabKey,
                           color: color,
                           onTap: () => setState(() {
                             _selectedMealType = tabKey;
-                            _selectedOptionId = opt.id;
+                            if (_selectedOptionIds.contains(opt.id)) {
+                              _selectedOptionIds.remove(opt.id);
+                            } else {
+                              _selectedOptionIds.add(opt.id);
+                            }
                           }),
                         )),
                     if (options.isEmpty)
@@ -243,7 +247,7 @@ class _VoteScreenState extends State<VoteScreen> with SingleTickerProviderStateM
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_isEating && _selectedOptionId.isNotEmpty)
+              if (_isEating && _selectedOptionIds.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -328,12 +332,12 @@ class _OptionCard extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: isSelected ? color : AppColors.divider, width: 2),
                     color: isSelected ? color : Colors.transparent,
                   ),
                   child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
                       : null,
                 ),
                 const SizedBox(width: 14),
